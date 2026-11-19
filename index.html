@@ -1,0 +1,2753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Christmas Parkour - Parkour de Natal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ============================================================================
+           ESTILOS GLOBAIS E LAYOUT RESPONSIVO
+           ============================================================================ */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #071124;
+            font-family: 'Nunito', sans-serif;
+            touch-action: manipulation;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ============================================================================
+           HUD (INTERFACE SUPERIOR DURANTE A PARTIDA)
+           ============================================================================ */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 10;
+            gap: 12px;
+        }
+
+        .hud-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .hud-pill {
+            background: rgba(13, 27, 54, 0.78);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 255, 255, 0.16);
+            border-radius: 18px;
+            padding: 8px 16px;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+        }
+
+        .hud-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #93c5fd;
+            font-weight: 800;
+        }
+
+        .hud-value {
+            font-family: 'Fredoka', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        /* Barra do Modo Turbo Trenó */
+        .turbo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(13, 27, 54, 0.82);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(250, 204, 21, 0.35);
+            border-radius: 20px;
+            padding: 8px 16px;
+            min-width: 195px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+            transition: transform 0.25s ease, border-color 0.25s ease;
+        }
+
+        .turbo-container.active {
+            border-color: #fde047;
+            box-shadow: 0 0 24px rgba(250, 204, 21, 0.55);
+            transform: scale(1.04);
+        }
+
+        .turbo-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            color: #fde047;
+            text-transform: uppercase;
+        }
+
+        .turbo-bar-bg {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .turbo-bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #f59e0b, #fde047, #fef08a);
+            transition: width 0.15s ease-out;
+            box-shadow: 0 0 10px rgba(253, 224, 71, 0.7);
+        }
+
+        .turbo-container.active .turbo-bar-fill {
+            background: linear-gradient(90deg, #ef4444, #f59e0b, #fde047);
+        }
+
+        /* Botão de Som */
+        .icon-btn {
+            pointer-events: auto;
+            cursor: pointer;
+            background: rgba(13, 27, 54, 0.85);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            width: 46px;
+            height: 46px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+            transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            transform: translateY(-2px);
+            background: rgba(30, 58, 110, 0.9);
+            border-color: #fde047;
+        }
+
+        .icon-btn:active {
+            transform: scale(0.94);
+        }
+
+        /* ============================================================================
+           TELAS DE SOBREPOSIÇÃO (INÍCIO E FIM DE JOGO)
+           ============================================================================ */
+        .overlay-screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: radial-gradient(circle at center, rgba(10, 22, 48, 0.52) 0%, rgba(5, 12, 28, 0.82) 100%);
+            backdrop-filter: blur(5px);
+            z-index: 20;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .card {
+            background: linear-gradient(165deg, rgba(20, 39, 77, 0.95) 0%, rgba(11, 23, 48, 0.97) 100%);
+            border: 3px solid rgba(255, 255, 255, 0.18);
+            border-radius: 30px;
+            padding: 30px 32px;
+            max-width: 470px;
+            width: 100%;
+            text-align: center;
+            color: #ffffff;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: repeating-linear-gradient(-45deg,
+                    #ef4444,
+                    #ef4444 14px,
+                    #ffffff 14px,
+                    #ffffff 28px,
+                    #22c55e 28px,
+                    #22c55e 42px);
+        }
+
+        .game-badge {
+            display: inline-block;
+            background: rgba(239, 68, 68, 0.22);
+            border: 1px solid rgba(248, 113, 113, 0.45);
+            color: #fca5a5;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 999px;
+            margin-bottom: 10px;
+        }
+
+        .game-title {
+            font-family: 'Fredoka', sans-serif;
+            font-size: clamp(2rem, 5vw, 2.75rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 10px;
+            background: linear-gradient(180deg, #ffffff 15%, #fde047 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
+        }
+
+        .game-subtitle {
+            color: #cbd5e1;
+            font-size: 0.98rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 24px;
+            text-align: left;
+        }
+
+        .tip-item {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 10px 12px;
+            font-size: 0.83rem;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tip-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 18px;
+            padding: 12px 8px;
+        }
+
+        .stat-box-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            color: #93c5fd;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .stat-box-value {
+            font-family: 'Fredoka', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .stat-box.highlight {
+            border-color: rgba(250, 204, 21, 0.5);
+            background: rgba(250, 204, 21, 0.1);
+        }
+
+        .stat-box.highlight .stat-box-value {
+            color: #fde047;
+        }
+
+        /* Botão Principal Estilizado */
+        .play-btn {
+            width: 100%;
+            cursor: pointer;
+            border: none;
+            border-radius: 20px;
+            padding: 16px 28px;
+            font-family: 'Fredoka', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            color: #ffffff;
+            background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+            box-shadow: 0 7px 0 #7f1d1d, 0 14px 28px rgba(239, 68, 68, 0.45);
+            transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .play-btn:hover {
+            filter: brightness(1.08);
+            transform: translateY(-2px);
+            box-shadow: 0 9px 0 #7f1d1d, 0 18px 32px rgba(239, 68, 68, 0.55);
+        }
+
+        .play-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 3px 0 #7f1d1d, 0 6px 14px rgba(239, 68, 68, 0.4);
+        }
+
+        .gameover-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .menu-btn {
+            width: 100%;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.22);
+            border-radius: 20px;
+            padding: 13px 24px;
+            font-family: 'Fredoka', sans-serif;
+            font-size: 1.12rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            color: #e2e8f0;
+            background: rgba(30, 41, 59, 0.85);
+            box-shadow: 0 5px 0 rgba(15, 23, 42, 0.9);
+            transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .menu-btn:hover {
+            background: rgba(51, 65, 85, 0.95);
+            border-color: #fde047;
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        .menu-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 rgba(15, 23, 42, 0.9);
+        }
+
+        .new-record-badge {
+            display: inline-block;
+            background: linear-gradient(90deg, #f59e0b, #fde047);
+            color: #422006;
+            font-weight: 800;
+            font-size: 0.78rem;
+            padding: 4px 12px;
+            border-radius: 999px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            animation: pulseBadge 1.2s infinite ease-in-out;
+        }
+
+        @keyframes pulseBadge {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.07);
+            }
+        }
+
+        @media (max-width: 540px) {
+            #hud {
+                padding: 12px;
+            }
+
+            .hud-pill {
+                padding: 6px 12px;
+                border-radius: 14px;
+            }
+
+            .hud-value {
+                font-size: 1.05rem;
+            }
+
+            .turbo-container {
+                min-width: 150px;
+                padding: 6px 12px;
+            }
+
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-wrapper">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- HUD Superior -->
+        <div id="hud">
+            <div class="hud-group">
+                <div class="hud-pill">
+                    <div>
+                        <div class="hud-label">Distância</div>
+                        <div class="hud-value" id="hud-score">0 m</div>
+                    </div>
+                </div>
+                <div class="hud-pill">
+                    <div>
+                        <div class="hud-label">Recorde</div>
+                        <div class="hud-value" id="hud-best">0 m</div>
+                    </div>
+                </div>
+                <div class="hud-pill" id="hud-biome-pill" style="border-color: rgba(147, 197, 253, 0.35);">
+                    <div>
+                        <div class="hud-label">Mapa</div>
+                        <div class="hud-value" id="hud-biome" style="font-size: 1.05rem;">🏘️ Vila Natalina</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barra do Modo Turbo Trenó -->
+            <div class="turbo-container" id="turbo-box">
+                <div class="turbo-header">
+                    <span id="turbo-title">🛷 Turbo Trenó</span>
+                    <span id="turbo-count">Pegue na pista</span>
+                </div>
+                <div class="turbo-bar-bg">
+                    <div class="turbo-bar-fill" id="turbo-fill"></div>
+                </div>
+            </div>
+
+            <div class="hud-group">
+                <button class="icon-btn" id="mute-btn" title="Alternar Som" aria-label="Alternar Som">
+                    <!-- Ícone de Som Ativo (SVG) -->
+                    <svg id="icon-sound-on" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                    </svg>
+                    <!-- Ícone de Som Mudo (SVG) -->
+                    <svg id="icon-sound-off" style="display:none;" width="22" height="22" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <line x1="23" y1="9" x2="17" y2="15"></line>
+                        <line x1="17" y1="9" x2="23" y2="15"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tela Inicial -->
+        <div class="overlay-screen" id="start-screen">
+            <div class="card">
+                <div class="game-badge">Edição Especial de Natal</div>
+                <h1 class="game-title">Christmas Parkour</h1>
+                <p class="game-subtitle">
+                    Corra pelos telhados nevados na véspera de Natal, salte sobre chaminés e colete presentes para
+                    ativar o <strong>Turbo Trenó</strong>!
+                </p>
+
+                <div class="tips-grid">
+                    <div class="tip-item">
+                        <span class="tip-icon">🦘</span>
+                        <span><strong>Pulo & Pulo Duplo:</strong> Espaço, W, Seta ↑ ou toque na tela</span>
+                    </div>
+                    <div class="tip-item">
+                        <span class="tip-icon">🎁</span>
+                        <span><strong>Presente Trenó:</strong> Pegue na pista para voar 5s no Trenó Dourado</span>
+                    </div>
+                    <div class="tip-item">
+                        <span class="tip-icon">🍬</span>
+                        <span><strong>Bengala Mola:</strong> Impulsiona o Papai Noel bem alto</span>
+                    </div>
+                    <div class="tip-item">
+                        <span class="tip-icon">❄️</span>
+                        <span><strong>Telhado de Gelo:</strong> Dá um leve impulso extra de velocidade</span>
+                    </div>
+                </div>
+
+                <button class="play-btn" id="start-btn">
+                    <span>▶ Começar Corrida</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tela de Fim de Jogo -->
+        <div class="overlay-screen hidden" id="gameover-screen">
+            <div class="card">
+                <div class="game-badge">Fim de Jogo</div>
+                <div id="new-record-tag" class="new-record-badge" style="display: none;">🏆 Novo Recorde!</div>
+                <h2 class="game-title">GAME OVER</h2>
+                <p class="game-subtitle" id="gameover-reason">
+                    O Papai Noel caiu dos telhados e a corrida terminou!
+                </p>
+
+                <div class="stats-summary">
+                    <div class="stat-box">
+                        <div class="stat-box-label">Pontuação</div>
+                        <div class="stat-box-value" id="final-score">0 m</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label">Presentes</div>
+                        <div class="stat-box-value" id="final-gifts">0</div>
+                    </div>
+                    <div class="stat-box highlight">
+                        <div class="stat-box-label">Recorde</div>
+                        <div class="stat-box-value" id="final-best">0 m</div>
+                    </div>
+                </div>
+
+                <div class="gameover-actions">
+                    <button class="play-btn" id="restart-btn">
+                        <span>↻ Jogar Novamente</span>
+                    </button>
+                    <button class="menu-btn" id="menu-btn">
+                        <span>🏠 Voltar ao Menu</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * SISTEMA DE ÁUDIO NATALINO SINTETIZADO (WEB AUDIO API)
+         * Gera efeitos sonoros de pulo, coleta, molas, turbo e melodia natalina suave
+         * ============================================================================
+         */
+        class SoundManager {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+                this.bgmTimer = null;
+                this.noteIndex = 0;
+                // Melodia festiva inspirada em Jingle Bells / sinos natalinos (frequências em Hz)
+                this.melody = [
+                    659.25, 659.25, 659.25, 0,
+                    659.25, 659.25, 659.25, 0,
+                    659.25, 783.99, 523.25, 587.33, 659.25, 0, 0, 0,
+                    698.46, 698.46, 698.46, 698.46,
+                    698.46, 659.25, 659.25, 659.25,
+                    659.25, 587.33, 587.33, 659.25, 587.33, 0, 783.99, 0
+                ];
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggleMute() {
+                this.muted = !this.muted;
+                return this.muted;
+            }
+
+            playTone(freq, type, duration, volume = 0.12, slideTo = null) {
+                if (this.muted || !this.ctx || freq <= 0) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, now);
+                    if (slideTo) {
+                        osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+                    }
+                    gain.gain.setValueAtTime(volume, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + duration);
+                } catch (e) {
+                    // Ignora falhas de áudio antes da interação do usuário
+                }
+            }
+
+            playJump(isDouble) {
+                this.init();
+                if (isDouble) {
+                    this.playTone(420, 'sine', 0.22, 0.14, 780);
+                    setTimeout(() => this.playTone(620, 'triangle', 0.16, 0.10, 920), 40);
+                } else {
+                    this.playTone(280, 'sine', 0.19, 0.14, 560);
+                }
+            }
+
+            playCollect(isCookie) {
+                this.init();
+                if (isCookie) {
+                    this.playTone(587.33, 'triangle', 0.12, 0.13, 880);
+                    setTimeout(() => this.playTone(880, 'sine', 0.16, 0.12), 55);
+                } else {
+                    this.playTone(523.25, 'sine', 0.12, 0.13, 783.99);
+                    setTimeout(() => this.playTone(1046.5, 'triangle', 0.18, 0.11), 60);
+                }
+            }
+
+            playSpring() {
+                this.init();
+                this.playTone(240, 'sine', 0.35, 0.16, 980);
+                setTimeout(() => this.playTone(520, 'triangle', 0.25, 0.12, 1180), 60);
+            }
+
+            playTurbo() {
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.5];
+                notes.forEach((n, idx) => {
+                    setTimeout(() => this.playTone(n, 'triangle', 0.24, 0.15), idx * 65);
+                });
+            }
+
+            playPortal() {
+                this.init();
+                const notes = [392.00, 493.88, 587.33, 783.99, 987.77, 1174.66];
+                notes.forEach((n, idx) => {
+                    setTimeout(() => this.playTone(n, 'sine', 0.35, 0.15, n * 1.15), idx * 55);
+                });
+            }
+
+            playSmash() {
+                this.init();
+                this.playTone(190, 'sawtooth', 0.18, 0.12, 75);
+            }
+
+            playGameOver() {
+                this.init();
+                const notes = [440, 392, 349.23, 293.66];
+                notes.forEach((n, idx) => {
+                    setTimeout(() => this.playTone(n, 'triangle', 0.28, 0.14), idx * 130);
+                });
+            }
+
+            startMusic() {
+                this.init();
+                this.stopMusic();
+                this.noteIndex = 0;
+                this.bgmTimer = setInterval(() => {
+                    if (this.muted) return;
+                    const freq = this.melody[this.noteIndex % this.melody.length];
+                    if (freq > 0) {
+                        this.playTone(freq, 'sine', 0.22, 0.045);
+                        // Harmonia suave de sino
+                        this.playTone(freq * 1.5, 'sine', 0.14, 0.015);
+                    }
+                    this.noteIndex++;
+                }, 230);
+            }
+
+            stopMusic() {
+                if (this.bgmTimer) {
+                    clearInterval(this.bgmTimer);
+                    this.bgmTimer = null;
+                }
+            }
+        }
+
+        /**
+         * ============================================================================
+         * PARÂMETROS REFINADOS DE FÍSICA E JOGABILIDADE (MÁXIMA FLUIDEZ)
+         * ============================================================================
+         */
+        const PHYSICS = {
+            baseSpeed: 5.0,          // Velocidade inicial suave e confortável
+            maxSpeed: 10.5,          // Velocidade máxima controlada
+            speedRamp: 0.00018,      // Aceleração progressiva muito gradual
+            gravity: 0.55,           // Gravidade leve e flutuante
+            jumpForce: -13.2,        // Impulso generoso no primeiro pulo
+            doubleJumpForce: -11.8,  // Impulso generoso no pulo duplo
+            springForce: -19.2,      // Impulso alto da mola de bengala doce
+            coyoteTimeMs: 150,       // 150ms de margem após sair da borda do telhado
+            jumpBufferMs: 150,       // 150ms de buffer para pulo pressionado antes de tocar o chão
+            iceSpeedBonus: 0.85,     // Impulso no gelo suavizado para manter total controle
+            turboDurationSec: 5.0,   // Exatos 5 segundos de Modo Turbo Trenó ao pegar o presente especial
+            postTurboGraceSec: 1.5,  // 1.5 segundos de invencibilidade segura ao sair do Turbo
+            turboMagnetRadius: 270   // Forte atração magnética durante o Turbo Trenó
+        };
+
+        /**
+         * ============================================================================
+         * CLASSES DE CENÁRIO, ENTIDADES E EFEITOS VISUAIS
+         * ============================================================================
+         */
+
+        // Partículas (neve, brilhos mágicos, fumaça de chaminé e estilhaços)
+        class Particle {
+            constructor(x, y, vx, vy, size, color, life, shape = 'circle') {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.size = size;
+                this.color = color;
+                this.life = life;
+                this.maxLife = life;
+                this.shape = shape;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.vRot = (Math.random() - 0.5) * 0.15;
+            }
+
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.rotation += this.vRot * dt;
+                this.life -= dt;
+            }
+
+            draw(ctx) {
+                const alpha = Math.max(0, this.life / this.maxLife);
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = this.color;
+
+                if (this.shape === 'star') {
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i * 4 * Math.PI) / 5;
+                        const r = i === 0 ? this.size : this.size;
+                        const x = Math.cos(angle) * r;
+                        const y = Math.sin(angle) * r;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        // Flocos de neve contínuos no céu
+        class Snowflake {
+            constructor(width, height) {
+                this.reset(width, height, true);
+            }
+
+            reset(width, height, randomY = false) {
+                this.x = Math.random() * width;
+                this.y = randomY ? Math.random() * height : -10;
+                this.radius = 1.4 + Math.random() * 2.8;
+                this.speedY = 0.7 + Math.random() * 1.4;
+                this.drift = (Math.random() - 0.5) * 0.7;
+                this.phase = Math.random() * Math.PI * 2;
+                this.alpha = 0.35 + Math.random() * 0.55;
+            }
+
+            update(dt, width, height, windSpeed) {
+                this.phase += 0.03 * dt;
+                this.x += (this.drift + Math.sin(this.phase) * 0.45 - windSpeed * 0.16) * dt;
+                this.y += this.speedY * dt;
+
+                if (this.y > height + 10) {
+                    this.reset(width, height, false);
+                }
+                if (this.x < -10) this.x = width + 10;
+                if (this.x > width + 10) this.x = -10;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Jogador: Papai Noel Ágil com animações de corrida, cambalhota e Trenó Turbo
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 36;
+                this.height = 46;
+                this.vy = 0;
+                this.grounded = false;
+                this.coyoteTimerMs = 0;
+                this.jumpBufferTimerMs = 0;
+                this.jumpsUsed = 0;
+                this.maxJumps = 2;
+                this.runCycle = 0;
+                this.squashX = 1;
+                this.squashY = 1;
+                this.onIce = false;
+                this.rotation = 0;
+            }
+
+            bufferJump() {
+                this.jumpBufferTimerMs = PHYSICS.jumpBufferMs;
+            }
+
+            tryExecuteJump(isTurbo, sound, spawnParticles) {
+                if (this.jumpBufferTimerMs <= 0) return false;
+
+                const canFirstJump = this.grounded || this.coyoteTimerMs > 0;
+                if (canFirstJump || this.jumpsUsed < this.maxJumps) {
+                    const isDouble = !canFirstJump && this.jumpsUsed > 0;
+                    this.vy = isDouble ? PHYSICS.doubleJumpForce : PHYSICS.jumpForce;
+                    this.grounded = false;
+                    this.coyoteTimerMs = 0;
+                    this.jumpBufferTimerMs = 0;
+                    this.jumpsUsed = isDouble ? 2 : 1;
+                    this.onIce = false;
+
+                    // Efeito elástico (squash & stretch)
+                    this.squashX = 0.76;
+                    this.squashY = 1.28;
+
+                    if (isDouble && !isTurbo) {
+                        this.rotation = 0.05; // Inicia cambalhota no ar
+                    }
+
+                    sound.playJump(isDouble);
+                    spawnParticles(
+                        this.x + this.width * 0.5,
+                        this.y + this.height,
+                        isDouble ? 10 : 7,
+                        isDouble ? '#fde047' : '#ffffff'
+                    );
+                    return true;
+                }
+                return false;
+            }
+
+            update(dt, dtMs, isTurbo, sound, spawnParticles) {
+                // Atualiza timers de Coyote Time e Jump Buffering
+                if (this.grounded) {
+                    this.coyoteTimerMs = PHYSICS.coyoteTimeMs;
+                } else if (this.coyoteTimerMs > 0) {
+                    this.coyoteTimerMs = Math.max(0, this.coyoteTimerMs - dtMs);
+                }
+
+                if (this.jumpBufferTimerMs > 0) {
+                    this.jumpBufferTimerMs = Math.max(0, this.jumpBufferTimerMs - dtMs);
+                    this.tryExecuteJump(isTurbo, sound, spawnParticles);
+                }
+
+                // Gravidade leve (ainda mais suave no Modo Turbo Trenó)
+                const currentGravity = isTurbo ? PHYSICS.gravity * 0.58 : PHYSICS.gravity;
+                this.vy += currentGravity * dt;
+                this.y += this.vy * dt;
+
+                // Animação de corrida e cambalhota no pulo duplo
+                if (this.grounded) {
+                    this.runCycle += (this.onIce ? 0.34 : 0.25) * dt;
+                    this.rotation = 0;
+                } else if (this.jumpsUsed === 2 && !isTurbo) {
+                    this.rotation += 0.23 * dt;
+                    if (this.rotation >= Math.PI * 2) {
+                        this.rotation = 0;
+                    }
+                } else {
+                    this.rotation *= Math.pow(0.84, dt);
+                }
+
+                // Retorno suave da escala elástica
+                this.squashX += (1 - this.squashX) * 0.2 * dt;
+                this.squashY += (1 - this.squashY) * 0.2 * dt;
+            }
+
+            draw(ctx, isTurbo, isGraceInvincible, time) {
+                ctx.save();
+
+                // Pisca suavemente durante a invencibilidade pós-turbo de 1.5s
+                if (!isTurbo && isGraceInvincible) {
+                    if (Math.floor(time * 16) % 2 === 0) {
+                        ctx.globalAlpha = 0.55;
+                    }
+                }
+
+                const centerX = this.x + this.width / 2;
+                const bottomY = this.y + this.height;
+
+                ctx.translate(centerX, bottomY);
+                if (!this.grounded && this.rotation !== 0) {
+                    ctx.translate(0, -this.height / 2);
+                    ctx.rotate(this.rotation);
+                    ctx.translate(0, this.height / 2);
+                }
+                ctx.scale(this.squashX, this.squashY);
+
+                // Desenha o Trenó Dourado Mágico no Modo Turbo
+                if (isTurbo) {
+                    ctx.save();
+                    // Aura brilhante do Turbo
+                    const aura = ctx.createRadialGradient(0, -18, 6, 0, -18, 46);
+                    aura.addColorStop(0, 'rgba(253, 224, 71, 0.48)');
+                    aura.addColorStop(1, 'rgba(253, 224, 71, 0)');
+                    ctx.fillStyle = aura;
+                    ctx.beginPath();
+                    ctx.arc(0, -18, 46, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Patins dourados do trenó
+                    ctx.strokeStyle = '#fde047';
+                    ctx.lineWidth = 3.5;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(-26, -2);
+                    ctx.lineTo(22, -2);
+                    ctx.quadraticCurveTo(32, -2, 30, -11);
+                    ctx.stroke();
+
+                    // Corpo do trenó vermelho e dourado
+                    ctx.fillStyle = '#dc2626';
+                    ctx.beginPath();
+                    ctx.moveTo(-24, -6);
+                    ctx.lineTo(20, -6);
+                    ctx.quadraticCurveTo(25, -16, 16, -20);
+                    ctx.lineTo(-10, -14);
+                    ctx.quadraticCurveTo(-22, -24, -26, -18);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#facc15';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                const offsetY = isTurbo ? -12 : 0;
+
+                // Pernas e botas animadas
+                const legSwing = this.grounded && !isTurbo ? Math.sin(this.runCycle) * 8 : (isTurbo ? 0 : 5);
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.roundRect(-10 + legSwing * 0.4, -12 + offsetY, 8, 12, 3);
+                ctx.roundRect(2 - legSwing * 0.4, -12 + offsetY, 8, 12, 3);
+                ctx.fill();
+
+                // Casaco vermelho do Papai Noel
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.roundRect(-14, -32 + offsetY, 28, 22, 9);
+                ctx.fill();
+
+                // Cinto preto e fivela dourada
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(-14, -20 + offsetY, 28, 5);
+                ctx.strokeStyle = '#facc15';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-4, -21 + offsetY, 8, 7);
+
+                // Cabeça e barba branca fofa
+                ctx.fillStyle = '#fed7aa';
+                ctx.beginPath();
+                ctx.arc(2, -37 + offsetY, 9, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(4, -33 + offsetY, 8.5, 0, Math.PI);
+                ctx.fill();
+
+                // Olho atento
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(6, -38 + offsetY, 1.6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Gorro de Natal com pompom balançando
+                ctx.fillStyle = '#dc2626';
+                ctx.beginPath();
+                ctx.moveTo(-7, -42 + offsetY);
+                ctx.lineTo(11, -42 + offsetY);
+                ctx.lineTo(-12, -52 + offsetY + Math.sin(this.runCycle) * 2);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.roundRect(-8, -44 + offsetY, 20, 4.5, 3);
+                ctx.arc(-13, -52 + offsetY + Math.sin(this.runCycle) * 2, 3.8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // Plataforma de Telhado Nevado (Normal ou Gelo) ou Geleira do Polo Norte
+        class RoofPlatform {
+            constructor(x, y, width, height, type = 'normal', biome = 'VILLAGE') {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.type = type; // 'normal' ou 'ice'
+                this.biome = biome; // 'VILLAGE' ou 'NORTH_POLE'
+
+                // Gera janelas iluminadas na fachada da casa (Vila) ou cristais de gelo (Polo Norte)
+                this.windows = [];
+                const cols = Math.floor((width - 50) / 68);
+                for (let i = 0; i < cols; i++) {
+                    this.windows.push({
+                        offsetX: 34 + i * 68,
+                        offsetY: 42,
+                        lit: Math.random() > 0.22
+                    });
+                }
+
+                // Iglu decorativo em algumas plataformas largas do Polo Norte
+                this.hasIgloo = biome === 'NORTH_POLE' && width >= 430 && Math.random() < 0.45;
+                this.iglooOffsetX = width * 0.5;
+            }
+
+            update(dt, speed) {
+                this.x -= speed * dt;
+            }
+
+            draw(ctx) {
+                ctx.save();
+
+                if (this.biome === 'NORTH_POLE') {
+                    // Parede de Geleira Ártica Profunda
+                    const glacierGrad = ctx.createLinearGradient(0, this.y, 0, this.y + this.height);
+                    glacierGrad.addColorStop(0, '#0284c7');
+                    glacierGrad.addColorStop(0.35, '#0369a1');
+                    glacierGrad.addColorStop(1, '#082f49');
+                    ctx.fillStyle = glacierGrad;
+                    ctx.fillRect(this.x + 6, this.y + 10, this.width - 12, this.height);
+
+                    // Facetas cristalinas internas da geleira
+                    ctx.fillStyle = 'rgba(186, 230, 253, 0.14)';
+                    for (const win of this.windows) {
+                        if (this.y + win.offsetY > ctx.canvas.height) continue;
+                        ctx.beginPath();
+                        ctx.moveTo(this.x + win.offsetX, this.y + 18);
+                        ctx.lineTo(this.x + win.offsetX + 36, this.y + 18);
+                        ctx.lineTo(this.x + win.offsetX + 18, this.y + 85);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+
+                    // Camada superior de gelo polar e neve compacta
+                    const topPolarGrad = ctx.createLinearGradient(0, this.y - 4, 0, this.y + 16);
+                    topPolarGrad.addColorStop(0, '#f0f9ff');
+                    topPolarGrad.addColorStop(0.55, '#bae6fd');
+                    topPolarGrad.addColorStop(1, '#38bdf8');
+                    ctx.fillStyle = topPolarGrad;
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - 4, this.y - 3, this.width + 8, 17, 8);
+                    ctx.fill();
+
+                    // Estalactites de gelo penduradas nas bordas
+                    ctx.fillStyle = '#7dd3fc';
+                    for (let ix = this.x + 16; ix < this.x + this.width - 16; ix += 42) {
+                        ctx.beginPath();
+                        ctx.moveTo(ix, this.y + 13);
+                        ctx.lineTo(ix + 10, this.y + 13);
+                        ctx.lineTo(ix + 5, this.y + 25);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+
+                    // Iglu decorativo ao fundo da geleira
+                    if (this.hasIgloo) {
+                        const igX = this.x + this.iglooOffsetX;
+                        const igY = this.y - 2;
+                        ctx.fillStyle = 'rgba(224, 242, 254, 0.35)';
+                        ctx.beginPath();
+                        ctx.arc(igX, igY, 34, Math.PI, 0);
+                        ctx.fill();
+                        ctx.fillStyle = 'rgba(12, 74, 110, 0.45)';
+                        ctx.beginPath();
+                        ctx.arc(igX + 16, igY, 13, Math.PI, 0);
+                        ctx.fill();
+                    }
+
+                    ctx.restore();
+                    return;
+                }
+
+                // Temas especiais de 3000m a 9000m
+                const themeStyles = {
+                    TOY_FACTORY: { wallTop: '#7f1d1d', wallBot: '#450a0a', trim: '#b45309', snowTop: '#fef08a', snowBot: '#f59e0b', winLit: '#fb923c', winFrame: '#451a03' },
+                    CANDY_LAND: { wallTop: '#be185d', wallBot: '#831843', trim: '#f43f5e', snowTop: '#ffffff', snowBot: '#fbcfe8', winLit: '#fef08a', winFrame: '#9d174d' },
+                    ENCHANTED_FOREST: { wallTop: '#065f46', wallBot: '#022c22', trim: '#047857', snowTop: '#ecfdf5', snowBot: '#a7f3d0', winLit: '#fde047', winFrame: '#064e3b' },
+                    CRYSTAL_CASTLE: { wallTop: '#4c1d95', wallBot: '#2e1065', trim: '#7c3aed', snowTop: '#f5f3ff', snowBot: '#c4b5fd', winLit: '#38bdf8', winFrame: '#3b0764' },
+                    STARRY_SKY: { wallTop: '#1e1b4b', wallBot: '#090d16', trim: '#4338ca', snowTop: '#e0e7ff', snowBot: '#818cf8', winLit: '#fde047', winFrame: '#1e1b4b' },
+                    SNOWY_MOUNTAINS: { wallTop: '#334155', wallBot: '#0f172a', trim: '#475569', snowTop: '#ffffff', snowBot: '#cbd5e1', winLit: '#bae6fd', winFrame: '#1e293b' },
+                    GOLDEN_KINGDOM: { wallTop: '#92400e', wallBot: '#451a03', trim: '#d97706', snowTop: '#fef9c3', snowBot: '#facc15', winLit: '#ffffff', winFrame: '#78350f' }
+                };
+
+                if (themeStyles[this.biome]) {
+                    const st = themeStyles[this.biome];
+                    const wallGrad = ctx.createLinearGradient(0, this.y, 0, this.y + this.height);
+                    wallGrad.addColorStop(0, st.wallTop);
+                    wallGrad.addColorStop(1, st.wallBot);
+                    ctx.fillStyle = wallGrad;
+                    ctx.fillRect(this.x + 8, this.y + 12, this.width - 16, this.height);
+
+                    for (const win of this.windows) {
+                        if (this.y + win.offsetY > ctx.canvas.height) continue;
+                        ctx.fillStyle = win.lit ? st.winLit : 'rgba(15, 23, 42, 0.5)';
+                        ctx.beginPath();
+                        ctx.roundRect(this.x + win.offsetX, this.y + win.offsetY, 26, 32, 6);
+                        ctx.fill();
+
+                        if (win.lit) {
+                            ctx.strokeStyle = st.winFrame;
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(this.x + win.offsetX + 13, this.y + win.offsetY);
+                            ctx.lineTo(this.x + win.offsetX + 13, this.y + win.offsetY + 32);
+                            ctx.moveTo(this.x + win.offsetX, this.y + win.offsetY + 16);
+                            ctx.lineTo(this.x + win.offsetX + 26, this.y + win.offsetY + 16);
+                            ctx.stroke();
+                        }
+                    }
+
+                    // Beiral decorativo
+                    ctx.fillStyle = st.trim;
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - 4, this.y + 4, this.width + 8, 14, 6);
+                    ctx.fill();
+
+                    // Cobertura superior temática
+                    const topGrad = ctx.createLinearGradient(0, this.y - 4, 0, this.y + 12);
+                    topGrad.addColorStop(0, st.snowTop);
+                    topGrad.addColorStop(1, st.snowBot);
+                    ctx.fillStyle = topGrad;
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - 4, this.y - 3, this.width + 8, 13, 7);
+                    ctx.fill();
+
+                    // Listras de bengala doce na Terra dos Doces
+                    if (this.biome === 'CANDY_LAND') {
+                        ctx.fillStyle = '#f43f5e';
+                        for (let cx = this.x + 12; cx < this.x + this.width - 20; cx += 34) {
+                            ctx.beginPath();
+                            ctx.moveTo(cx, this.y - 3);
+                            ctx.lineTo(cx + 12, this.y - 3);
+                            ctx.lineTo(cx + 6, this.y + 10);
+                            ctx.lineTo(cx - 6, this.y + 10);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+
+                    // Engrenagens douradas na Fábrica de Brinquedos
+                    if (this.biome === 'TOY_FACTORY') {
+                        ctx.strokeStyle = 'rgba(253, 224, 71, 0.35)';
+                        ctx.lineWidth = 3;
+                        for (let gx = this.x + 55; gx < this.x + this.width - 45; gx += 130) {
+                            ctx.beginPath();
+                            ctx.arc(gx, this.y + 56, 16, 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
+                    }
+
+                    ctx.restore();
+                    return;
+                }
+
+                // Parede da casa abaixo do telhado (Vila Natalina)
+                const wallGrad = ctx.createLinearGradient(0, this.y, 0, this.y + this.height);
+                if (this.type === 'ice') {
+                    wallGrad.addColorStop(0, '#1e3a5f');
+                    wallGrad.addColorStop(1, '#0f1f38');
+                } else {
+                    wallGrad.addColorStop(0, '#332940');
+                    wallGrad.addColorStop(1, '#191526');
+                }
+                ctx.fillStyle = wallGrad;
+                ctx.fillRect(this.x + 8, this.y + 12, this.width - 16, this.height);
+
+                // Janelas aconchegantes com luz dourada
+                for (const win of this.windows) {
+                    if (this.y + win.offsetY > ctx.canvas.height) continue;
+                    ctx.fillStyle = win.lit ? '#fde047' : '#1e293b';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x + win.offsetX, this.y + win.offsetY, 26, 32, 5);
+                    ctx.fill();
+
+                    if (win.lit) {
+                        ctx.strokeStyle = '#92400e';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(this.x + win.offsetX + 13, this.y + win.offsetY);
+                        ctx.lineTo(this.x + win.offsetX + 13, this.y + win.offsetY + 32);
+                        ctx.moveTo(this.x + win.offsetX, this.y + win.offsetY + 16);
+                        ctx.lineTo(this.x + win.offsetX + 26, this.y + win.offsetY + 16);
+                        ctx.stroke();
+                    }
+                }
+
+                // Beiral do telhado
+                ctx.fillStyle = this.type === 'ice' ? '#0284c7' : '#7f1d1d';
+                ctx.beginPath();
+                ctx.roundRect(this.x - 4, this.y + 4, this.width + 8, 14, 6);
+                ctx.fill();
+
+                // Camada superior de neve ou gelo brilhante
+                const topGrad = ctx.createLinearGradient(0, this.y - 4, 0, this.y + 12);
+                if (this.type === 'ice') {
+                    topGrad.addColorStop(0, '#bae6fd');
+                    topGrad.addColorStop(1, '#38bdf8');
+                } else {
+                    topGrad.addColorStop(0, '#ffffff');
+                    topGrad.addColorStop(1, '#e2e8f0');
+                }
+                ctx.fillStyle = topGrad;
+                ctx.beginPath();
+                ctx.roundRect(this.x - 4, this.y - 3, this.width + 8, 13, 7);
+                ctx.fill();
+
+                // Detalhe de brilho no gelo
+                if (this.type === 'ice') {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+                    for (let gx = this.x + 18; gx < this.x + this.width - 30; gx += 55) {
+                        ctx.beginPath();
+                        ctx.moveTo(gx, this.y - 1);
+                        ctx.lineTo(gx + 14, this.y - 1);
+                        ctx.lineTo(gx + 8, this.y + 7);
+                        ctx.lineTo(gx - 6, this.y + 7);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Obstáculos e Molas nos Telhados
+        class RoofItem {
+            constructor(x, y, kind) {
+                this.x = x;
+                this.y = y;
+                this.kind = kind; // 'chimney', 'snowman', 'spikes', 'spring'
+                this.smokeTimer = 0;
+
+                if (kind === 'chimney') {
+                    this.width = 40;
+                    this.height = 46;
+                } else if (kind === 'snowman') {
+                    this.width = 36;
+                    this.height = 46;
+                } else if (kind === 'spikes') {
+                    this.width = 44;
+                    this.height = 26;
+                } else if (kind === 'spring') {
+                    this.width = 38;
+                    this.height = 24;
+                }
+            }
+
+            update(dt, speed, particles) {
+                this.x -= speed * dt;
+                if (this.kind === 'chimney') {
+                    this.smokeTimer += dt;
+                    if (this.smokeTimer > 14) {
+                        this.smokeTimer = 0;
+                        particles.push(new Particle(
+                            this.x + this.width / 2,
+                            this.y - this.height - 4,
+                            -0.6 - Math.random() * 0.6,
+                            -1.1 - Math.random() * 0.6,
+                            5 + Math.random() * 4,
+                            'rgba(226, 232, 240, 0.45)',
+                            45
+                        ));
+                    }
+                }
+            }
+
+            draw(ctx, time) {
+                ctx.save();
+                if (this.kind === 'chimney') {
+                    // Chaminé de tijolos vermelhos com topo nevado
+                    ctx.fillStyle = '#991b1b';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x, this.y - this.height, this.width, this.height, [4, 4, 0, 0]);
+                    ctx.fill();
+
+                    // Borda superior da chaminé
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.fillRect(this.x - 4, this.y - this.height, this.width + 8, 9);
+
+                    // Neve no topo
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - 4, this.y - this.height - 3, this.width + 8, 6, 3);
+                    ctx.fill();
+                } else if (this.kind === 'snowman') {
+                    // Boneco de neve rabugento
+                    const cx = this.x + this.width / 2;
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.beginPath();
+                    ctx.arc(cx, this.y - 13, 14, 0, Math.PI * 2);
+                    ctx.arc(cx, this.y - 33, 10, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Cachecol vermelho
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(cx - 9, this.y - 25, 18, 5);
+
+                    // Nariz de cenoura e sobrancelhas rabugentas
+                    ctx.fillStyle = '#f97316';
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 2, this.y - 33);
+                    ctx.lineTo(cx - 12, this.y - 31);
+                    ctx.lineTo(cx - 2, this.y - 29);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 6, this.y - 38);
+                    ctx.lineTo(cx - 1, this.y - 36);
+                    ctx.stroke();
+                } else if (this.kind === 'spikes') {
+                    // Cristais / espinhos de gelo
+                    ctx.fillStyle = '#7dd3fc';
+                    const count = 3;
+                    const step = this.width / count;
+                    for (let i = 0; i < count; i++) {
+                        const sx = this.x + i * step;
+                        ctx.beginPath();
+                        ctx.moveTo(sx, this.y);
+                        ctx.lineTo(sx + step / 2, this.y - this.height);
+                        ctx.lineTo(sx + step, this.y);
+                        ctx.closePath();
+                        ctx.fill();
+
+                        ctx.fillStyle = '#e0f2fe';
+                        ctx.beginPath();
+                        ctx.moveTo(sx + step * 0.25, this.y);
+                        ctx.lineTo(sx + step / 2, this.y - this.height);
+                        ctx.lineTo(sx + step * 0.55, this.y);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.fillStyle = '#7dd3fc';
+                    }
+                } else if (this.kind === 'spring') {
+                    // Mola de bengala doce pulsante
+                    const bounce = Math.sin(time * 8) * 2;
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x + 4, this.y - 14 + bounce, this.width - 8, 14 - bounce, 6);
+                    ctx.fill();
+
+                    // Listras brancas da bengala doce
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(this.x + 10, this.y - 14 + bounce, 6, 14 - bounce);
+                    ctx.fillRect(this.x + 22, this.y - 14 + bounce, 6, 14 - bounce);
+
+                    // Topo acolchoado dourado
+                    ctx.fillStyle = '#fde047';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x, this.y - 18 + bounce, this.width, 6, 4);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        // Coletáveis (Presentes de Natal, Biscoitos de Gengibre e Presente Especial de Trenó)
+        class Collectible {
+            constructor(x, y, type = 'gift') {
+                this.x = x;
+                this.baseY = y;
+                this.y = y;
+                this.type = type; // 'gift', 'cookie' ou 'sleigh_gift'
+                this.radius = type === 'sleigh_gift' ? 19 : 14;
+                this.phase = Math.random() * Math.PI * 2;
+                this.collected = false;
+            }
+
+            update(dt, speed, player, isTurbo) {
+                this.x -= speed * dt;
+                this.phase += 0.08 * dt;
+                this.y = this.baseY + Math.sin(this.phase) * 5;
+
+                // Forte atração magnética no Modo Turbo Trenó (e leve atração natural próxima)
+                const px = player.x + player.width / 2;
+                const py = player.y + player.height / 2;
+                const dx = px - this.x;
+                const dy = py - this.y;
+                const dist = Math.hypot(dx, dy);
+
+                const magnetRange = isTurbo ? PHYSICS.turboMagnetRadius : 68;
+                const pullStrength = isTurbo ? 14.5 : 3.2;
+
+                if (dist < magnetRange && dist > 1) {
+                    this.x += (dx / dist) * pullStrength * dt;
+                    this.baseY += (dy / dist) * pullStrength * dt;
+                    this.y = this.baseY;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Brilho suave atrás do item
+                const glowRadius = this.type === 'sleigh_gift' ? 28 : 20;
+                const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, glowRadius);
+                glow.addColorStop(0, this.type === 'sleigh_gift' ? 'rgba(250, 204, 21, 0.72)' : 'rgba(253, 224, 71, 0.42)');
+                glow.addColorStop(1, 'rgba(253, 224, 71, 0)');
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (this.type === 'sleigh_gift') {
+                    // Presente Dourado Especial do Trenó com ícone de trenó
+                    const pulse = 1 + Math.sin(this.phase * 1.5) * 0.08;
+                    ctx.scale(pulse, pulse);
+
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.strokeStyle = '#fef08a';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(-15, -14, 30, 28, 7);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Fita vermelha festiva
+                    ctx.fillStyle = '#dc2626';
+                    ctx.fillRect(-3.5, -14, 7, 28);
+                    ctx.fillRect(-15, -3.5, 30, 7);
+
+                    // Laço grande no topo
+                    ctx.beginPath();
+                    ctx.arc(-5, -15, 4.5, 0, Math.PI * 2);
+                    ctx.arc(5, -15, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Patins de trenó dourados na base do presente
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2.2;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(-13, 17);
+                    ctx.lineTo(11, 17);
+                    ctx.quadraticCurveTo(16, 17, 15, 13);
+                    ctx.stroke();
+                } else if (this.type === 'gift') {
+                    // Caixa de presente festiva
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.roundRect(-11, -11, 22, 22, 5);
+                    ctx.fill();
+
+                    // Fita verde/dourada
+                    ctx.fillStyle = '#fde047';
+                    ctx.fillRect(-2.5, -11, 5, 22);
+                    ctx.fillRect(-11, -2.5, 22, 5);
+
+                    // Laço no topo
+                    ctx.beginPath();
+                    ctx.arc(-4, -12, 3.5, 0, Math.PI * 2);
+                    ctx.arc(4, -12, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Biscoito de gengibre sorridente
+                    ctx.fillStyle = '#d97706';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#fef3c7';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 9.5, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Olhos e botões de glacê
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(-3.5, -2.5, 1.6, 0, Math.PI * 2);
+                    ctx.arc(3.5, -2.5, 1.6, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(0, 4, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Portal Mágico para o Polo Norte (aparece aos 2000m)
+        class NorthPolePortal {
+            constructor(x, y, targetStage) {
+                this.x = x;
+                this.y = y;
+                this.width = 56;
+                this.height = 104;
+                this.triggered = false;
+                this.targetStage = targetStage;
+            }
+
+            update(dt, speed) {
+                this.x -= speed * dt;
+            }
+
+            draw(ctx, time) {
+                ctx.save();
+                const cx = this.x + this.width / 2;
+                const cy = this.y - this.height / 2;
+                const primary = this.targetStage.portalColor || '#38bdf8';
+                const secondary = this.targetStage.portalSecondary || '#34d399';
+
+                // Aura externa pulsante
+                const outerGlow = ctx.createRadialGradient(cx, cy, 10, cx, cy, 78);
+                outerGlow.addColorStop(0, primary);
+                outerGlow.addColorStop(0.5, 'rgba(255, 255, 255, 0.25)');
+                outerGlow.addColorStop(1, 'rgba(56, 189, 248, 0)');
+                ctx.fillStyle = outerGlow;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 78, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Anéis giratórios do portal dimensional
+                ctx.translate(cx, cy);
+                for (let r = 0; r < 3; r++) {
+                    ctx.save();
+                    ctx.rotate(time * (2.2 + r * 0.9) * (r % 2 === 0 ? 1 : -1));
+                    ctx.strokeStyle = r === 0 ? '#ffffff' : (r === 1 ? primary : secondary);
+                    ctx.lineWidth = 4 - r * 0.7;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 26 - r * 5, 48 - r * 8, 0, 0, Math.PI * 1.65);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // Núcleo brilhante
+                const coreGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 32);
+                coreGrad.addColorStop(0, '#ffffff');
+                coreGrad.addColorStop(0.55, primary);
+                coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0.05)');
+                ctx.fillStyle = coreGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 22, 42, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Placa indicativa flutuante acima do portal
+                const labelText = `${this.targetStage.icon} ${this.targetStage.shortName}`;
+                ctx.font = 'bold 12px Nunito, sans-serif';
+                const boxW = Math.max(118, ctx.measureText(labelText).width + 24);
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                ctx.strokeStyle = primary;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(-boxW / 2, -74, boxW, 24, 10);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(labelText, 0, -62);
+
+                ctx.restore();
+            }
+        }
+
+        const BIOME_STAGES = [
+            {
+                id: 'VILLAGE',
+                minDist: 0,
+                icon: '🏘️',
+                name: 'Vila Natalina',
+                shortName: 'VILA NATALINA',
+                portalColor: '#fde047',
+                portalSecondary: '#ef4444',
+                sky: ['#040b1a', '#0c1f44', '#173463'],
+                aurora: ['rgba(52, 211, 153, 0)', 'rgba(52, 211, 153, 0.16)', 'rgba(56, 189, 248, 0)'],
+                moon: '#fef9c3',
+                moonGlow: 'rgba(254, 249, 195, 0.45)',
+                mtnFar: ['#10254a', '#1e3a6e'],
+                mtnNear: ['#0b1a36', '#162d59']
+            },
+            {
+                id: 'NORTH_POLE',
+                minDist: 2000,
+                icon: '❄️',
+                name: 'Polo Norte',
+                shortName: 'POLO NORTE',
+                portalColor: '#38bdf8',
+                portalSecondary: '#34d399',
+                sky: ['#021324', '#062c43', '#0e4f6e'],
+                aurora: ['rgba(52, 211, 153, 0)', 'rgba(52, 211, 153, 0.34)', 'rgba(56, 189, 248, 0.24)'],
+                moon: '#f0f9ff',
+                moonGlow: 'rgba(224, 242, 254, 0.55)',
+                mtnFar: ['#073b5c', '#38bdf8'],
+                mtnNear: ['#042a42', '#7dd3fc']
+            },
+            {
+                id: 'TOY_FACTORY',
+                minDist: 3000,
+                icon: '🏭',
+                name: 'Fábrica de Brinquedos',
+                shortName: 'FÁBRICA DO NOEL',
+                portalColor: '#f59e0b',
+                portalSecondary: '#ef4444',
+                sky: ['#1f0909', '#451212', '#7c2d12'],
+                aurora: ['rgba(251, 146, 60, 0)', 'rgba(251, 146, 60, 0.24)', 'rgba(250, 204, 21, 0.18)'],
+                moon: '#fef08a',
+                moonGlow: 'rgba(254, 240, 138, 0.5)',
+                mtnFar: ['#450a0a', '#991b1b'],
+                mtnNear: ['#290707', '#b91c1c']
+            },
+            {
+                id: 'CANDY_LAND',
+                minDist: 4000,
+                icon: '🍭',
+                name: 'Terra dos Doces',
+                shortName: 'TERRA DOS DOCES',
+                portalColor: '#f472b6',
+                portalSecondary: '#fde047',
+                sky: ['#26081c', '#50113a', '#831843'],
+                aurora: ['rgba(244, 114, 182, 0)', 'rgba(244, 114, 182, 0.3)', 'rgba(253, 224, 71, 0.2)'],
+                moon: '#fce7f3',
+                moonGlow: 'rgba(251, 207, 232, 0.55)',
+                mtnFar: ['#701a45', '#f472b6'],
+                mtnNear: ['#4c0519', '#fbcfe8']
+            },
+            {
+                id: 'ENCHANTED_FOREST',
+                minDist: 5000,
+                icon: '🌲',
+                name: 'Floresta Encantada',
+                shortName: 'FLORESTA NATALINA',
+                portalColor: '#34d399',
+                portalSecondary: '#fde047',
+                sky: ['#021a12', '#063726', '#065f46'],
+                aurora: ['rgba(52, 211, 153, 0)', 'rgba(16, 185, 129, 0.35)', 'rgba(250, 204, 21, 0.2)'],
+                moon: '#ecfdf5',
+                moonGlow: 'rgba(167, 243, 208, 0.5)',
+                mtnFar: ['#064e3b', '#10b981'],
+                mtnNear: ['#022c22', '#6ee7b7']
+            },
+            {
+                id: 'CRYSTAL_CASTLE',
+                minDist: 6000,
+                icon: '🏰',
+                name: 'Castelo de Cristal',
+                shortName: 'CASTELO DE CRISTAL',
+                portalColor: '#c084fc',
+                portalSecondary: '#38bdf8',
+                sky: ['#120729', '#281157', '#4c1d95'],
+                aurora: ['rgba(192, 132, 252, 0)', 'rgba(168, 85, 247, 0.32)', 'rgba(56, 189, 248, 0.24)'],
+                moon: '#f3e8ff',
+                moonGlow: 'rgba(216, 180, 254, 0.55)',
+                mtnFar: ['#3b0764', '#a855f7'],
+                mtnNear: ['#240046', '#d8b4fe']
+            },
+            {
+                id: 'STARRY_SKY',
+                minDist: 7000,
+                icon: '🌌',
+                name: 'Céu Estrelado',
+                shortName: 'CÉU ESTRELADO',
+                portalColor: '#818cf8',
+                portalSecondary: '#fde047',
+                sky: ['#03040c', '#0b102b', '#1e1b4b'],
+                aurora: ['rgba(99, 102, 241, 0)', 'rgba(129, 140, 248, 0.34)', 'rgba(253, 224, 71, 0.22)'],
+                moon: '#fef08a',
+                moonGlow: 'rgba(253, 224, 71, 0.6)',
+                mtnFar: ['#1e1b4b', '#6366f1'],
+                mtnNear: ['#0f172a', '#a5b4fc']
+            },
+            {
+                id: 'SNOWY_MOUNTAINS',
+                minDist: 8000,
+                icon: '🏔️',
+                name: 'Montanhas Nevadas',
+                shortName: 'ALPES NEVADOS',
+                portalColor: '#e2e8f0',
+                portalSecondary: '#38bdf8',
+                sky: ['#09111e', '#17253b', '#2b4162'],
+                aurora: ['rgba(186, 230, 253, 0)', 'rgba(186, 230, 253, 0.28)', 'rgba(255, 255, 255, 0.2)'],
+                moon: '#ffffff',
+                moonGlow: 'rgba(241, 245, 249, 0.55)',
+                mtnFar: ['#1e293b', '#cbd5e1'],
+                mtnNear: ['#0f172a', '#f8fafc']
+            },
+            {
+                id: 'GOLDEN_KINGDOM',
+                minDist: 9000,
+                icon: '✨',
+                name: 'Reino Dourado',
+                shortName: 'REINO DOURADO',
+                portalColor: '#facc15',
+                portalSecondary: '#ffffff',
+                sky: ['#1c1103', '#422806', '#78350f'],
+                aurora: ['rgba(250, 204, 21, 0)', 'rgba(250, 204, 21, 0.36)', 'rgba(254, 240, 138, 0.25)'],
+                moon: '#fef9c3',
+                moonGlow: 'rgba(250, 204, 21, 0.65)',
+                mtnFar: ['#713f12', '#eab308'],
+                mtnNear: ['#422006', '#fde047']
+            }
+        ];
+
+        /**
+         * ============================================================================
+         * MOTOR PRINCIPAL DO JOGO CHRISTMAS PARKOUR
+         * ============================================================================
+         */
+        class ChristmasParkourGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.sound = new SoundManager();
+
+                // Elementos de UI
+                this.hudScore = document.getElementById('hud-score');
+                this.hudBest = document.getElementById('hud-best');
+                this.hudBiome = document.getElementById('hud-biome');
+                this.hudBiomePill = document.getElementById('hud-biome-pill');
+                this.turboBox = document.getElementById('turbo-box');
+                this.turboTitle = document.getElementById('turbo-title');
+                this.turboCount = document.getElementById('turbo-count');
+                this.turboFill = document.getElementById('turbo-fill');
+
+                this.startScreen = document.getElementById('start-screen');
+                this.gameoverScreen = document.getElementById('gameover-screen');
+                this.finalScoreEl = document.getElementById('final-score');
+                this.finalGiftsEl = document.getElementById('final-gifts');
+                this.finalBestEl = document.getElementById('final-best');
+                this.newRecordTag = document.getElementById('new-record-tag');
+
+                // Recorde salvo no localStorage
+                this.bestDistance = parseInt(localStorage.getItem('christmas_parkour_best') || '0', 10);
+                this.hudBest.textContent = `${this.bestDistance} m`;
+
+                this.state = 'MENU'; // 'MENU', 'PLAYING', 'GAMEOVER'
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.time = 0;
+                this.lastTimestamp = 0;
+
+                // Camadas de cenário
+                this.stars = [];
+                this.snowflakes = [];
+                this.particles = [];
+                this.platforms = [];
+                this.items = [];
+                this.collectibles = [];
+
+                this.resizeCanvas();
+                this.initScenery();
+                this.resetWorld();
+                this.bindEvents();
+            }
+
+            resizeCanvas() {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width * dpr;
+                this.canvas.height = this.height * dpr;
+                this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+
+            initScenery() {
+                this.stars = [];
+                for (let i = 0; i < 65; i++) {
+                    this.stars.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * (this.height * 0.55),
+                        r: 0.8 + Math.random() * 1.8,
+                        phase: Math.random() * Math.PI * 2
+                    });
+                }
+
+                this.snowflakes = [];
+                for (let i = 0; i < 75; i++) {
+                    this.snowflakes.push(new Snowflake(this.width, this.height));
+                }
+            }
+
+            resetWorld() {
+                this.distance = 0;
+                this.giftsCollected = 0;
+                this.speed = PHYSICS.baseSpeed;
+                this.isTurbo = false;
+                this.turboTimerSec = 0;
+                this.postTurboGraceSec = 0;
+                this.consecutiveObstacleRoofs = 0;
+                this.roofsSinceSleighGift = 0;
+
+                // Estado do bioma e dos Portais a cada 1000m (2000m até 9000m)
+                this.biomeStageIndex = 0;
+                this.biome = BIOME_STAGES[0].id;
+                this.spawnedMilestones = new Set();
+                this.portal = null;
+                this.portalFlashAlpha = 0;
+                this.bannerTimerSec = 0;
+                this.bannerTitleText = '';
+                this.bannerSubText = '';
+
+                this.platforms = [];
+                this.items = [];
+                this.collectibles = [];
+                this.particles = [];
+
+                const startY = Math.min(this.height - 130, Math.max(260, this.height * 0.64));
+                const playerX = Math.min(180, this.width * 0.22);
+
+                // Primeiro telhado inicial bem amplo e seguro
+                const firstRoof = new RoofPlatform(0, startY, Math.max(680, this.width * 0.78), this.height - startY, 'normal', this.biome);
+                this.platforms.push(firstRoof);
+
+                // Linha inicial de presentes convidativos
+                for (let i = 0; i < 3; i++) {
+                    this.collectibles.push(new Collectible(playerX + 220 + i * 52, startY - 28, i === 1 ? 'cookie' : 'gift'));
+                }
+
+                this.player = new Player(playerX, startY - 46);
+                this.player.grounded = true;
+
+                this.generateAhead();
+                this.updateHUD();
+            }
+
+            startGame() {
+                this.resetWorld();
+                this.state = 'PLAYING';
+                this.startScreen.classList.add('hidden');
+                this.gameoverScreen.classList.add('hidden');
+                this.sound.startMusic();
+            }
+
+            returnToMenu() {
+                this.sound.stopMusic();
+                this.resetWorld();
+                this.state = 'MENU';
+                this.gameoverScreen.classList.add('hidden');
+                this.startScreen.classList.remove('hidden');
+            }
+
+            triggerGameOver(reason = 'O Papai Noel caiu dos telhados e a corrida terminou!') {
+                if (this.state === 'GAMEOVER') return;
+                this.state = 'GAMEOVER';
+                this.isTurbo = false;
+                this.turboTimerSec = 0;
+                this.speed = 0;
+                this.sound.stopMusic();
+                this.sound.playGameOver();
+
+                const finalMeters = Math.floor(this.distance);
+                let isNewRecord = false;
+                if (finalMeters > this.bestDistance) {
+                    this.bestDistance = finalMeters;
+                    localStorage.setItem('christmas_parkour_best', String(this.bestDistance));
+                    this.hudBest.textContent = `${this.bestDistance} m`;
+                    isNewRecord = true;
+                }
+
+                const reasonEl = document.getElementById('gameover-reason');
+                if (reasonEl) reasonEl.textContent = reason;
+
+                this.finalScoreEl.textContent = `${finalMeters} m`;
+                this.finalGiftsEl.textContent = `${this.giftsCollected}`;
+                this.finalBestEl.textContent = `${this.bestDistance} m`;
+                this.newRecordTag.style.display = isNewRecord ? 'inline-block' : 'none';
+
+                this.gameoverScreen.classList.remove('hidden');
+            }
+
+            spawnParticles(x, y, count, color, shape = 'circle') {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const spd = 1.2 + Math.random() * 3.8;
+                    this.particles.push(new Particle(
+                        x,
+                        y,
+                        Math.cos(angle) * spd,
+                        Math.sin(angle) * spd - 1.2,
+                        2.5 + Math.random() * 3.5,
+                        color,
+                        24 + Math.random() * 18,
+                        shape
+                    ));
+                }
+            }
+
+            /**
+             * Geração procedural amigável de telhados, molas, obstáculos seguros e arcos de coletáveis
+             */
+            generateAhead() {
+                while (true) {
+                    const lastRoof = this.platforms[this.platforms.length - 1];
+                    const lastEnd = lastRoof.x + lastRoof.width;
+                    if (lastEnd > this.width + 650) break;
+
+                    // Vão (gap) proporcional à velocidade atual para nunca gerar saltos impossíveis
+                    const speedRatio = Math.max(0, (this.speed - PHYSICS.baseSpeed) / (PHYSICS.maxSpeed - PHYSICS.baseSpeed));
+                    const minGap = 68 + speedRatio * 28;
+                    const maxGap = 128 + speedRatio * 52;
+                    const gap = minGap + Math.random() * (maxGap - minGap);
+
+                    // Variação de altura suave entre telhados (evita degraus altos demais)
+                    const minY = Math.max(220, this.height * 0.42);
+                    const maxY = this.height - 115;
+                    const maxStepUp = -78;   // Subida máxima bem confortável
+                    const maxStepDown = 95;  // Descida máxima suave
+                    const deltaY = maxStepUp + Math.random() * (maxStepDown - maxStepUp);
+                    const newY = Math.min(maxY, Math.max(minY, lastRoof.y + deltaY));
+
+                    // Telhados longos entre 340px e 680px
+                    const newWidth = 340 + Math.random() * 340;
+                    const newX = lastEnd + gap;
+
+                    // Apenas ~15% de chance de telhado de gelo (e nunca dois seguidos); no Polo Norte todas as plataformas já são geleiras
+                    const canBeIce = this.biome === 'VILLAGE' && lastRoof.type !== 'ice' && this.distance > 120;
+                    const roofType = this.biome === 'NORTH_POLE'
+                        ? 'ice'
+                        : ((canBeIce && Math.random() < 0.15) ? 'ice' : 'normal');
+
+                    // Verifica se atingiu o próximo marco de mapa (2000m, 3000m, 4000m, ..., 9000m)
+                    const nextStage = BIOME_STAGES[this.biomeStageIndex + 1];
+                    const shouldSpawnPortal = nextStage &&
+                        !this.spawnedMilestones.has(nextStage.minDist) &&
+                        this.distance >= nextStage.minDist;
+
+                    const finalWidth = shouldSpawnPortal ? Math.max(460, newWidth) : newWidth;
+
+                    const newRoof = new RoofPlatform(newX, newY, finalWidth, this.height - newY, roofType, this.biome);
+                    this.platforms.push(newRoof);
+
+                    if (shouldSpawnPortal) {
+                        this.spawnedMilestones.add(nextStage.minDist);
+                        this.portal = new NorthPolePortal(newRoof.x + newRoof.width * 0.55, newRoof.y, nextStage);
+                        this.consecutiveObstacleRoofs = 0;
+                    } else {
+                        this.populateRoof(newRoof, gap, lastRoof);
+                    }
+                }
+            }
+
+            populateRoof(roof, gap, prevRoof) {
+                // 1. Arcos ocasionais de presentes/biscoitos sobre o vão (reduzidos)
+                if (Math.random() < 0.35) {
+                    const arcStartX = prevRoof.x + prevRoof.width - 10;
+                    const arcEndX = roof.x + 15;
+                    const peakY = Math.min(prevRoof.y, roof.y) - 68;
+                    const steps = 2;
+
+                    for (let i = 0; i < steps; i++) {
+                        const t = (i + 0.5) / steps;
+                        const cx = arcStartX + (arcEndX - arcStartX) * t;
+                        const parabola = 4 * t * (1 - t);
+                        const baseLineY = prevRoof.y + (roof.y - prevRoof.y) * t - 24;
+                        const cy = baseLineY - parabola * (baseLineY - peakY);
+                        const type = (i === 1 && Math.random() < 0.5) ? 'cookie' : 'gift';
+                        this.collectibles.push(new Collectible(cx, cy, type));
+                    }
+                }
+
+                // 2. Popula o interior do telhado com maior foco em obstáculos e menos coletáveis
+                const safeEntryMargin = 95;
+                const safeExitMargin = 95;
+                const usableWidth = roof.width - safeEntryMargin - safeExitMargin;
+                const obsTypes = ['chimney', 'snowman', 'spikes'];
+
+                const roll = Math.random();
+
+                if (roll < 0.22) {
+                    // Mola de bengala doce antes da borda de saída (com obstáculo antes se o telhado for longo)
+                    if (usableWidth >= 220 && Math.random() < 0.65) {
+                        const firstObs = obsTypes[Math.floor(Math.random() * obsTypes.length)];
+                        this.items.push(new RoofItem(roof.x + safeEntryMargin + 20, roof.y, firstObs));
+                    }
+                    const springX = roof.x + roof.width - 84;
+                    this.items.push(new RoofItem(springX, roof.y, 'spring'));
+                    this.consecutiveObstacleRoofs = 0;
+
+                    // Apenas 2 coletáveis no alto do salto da mola
+                    for (let i = 0; i < 2; i++) {
+                        const arcX = springX + 65 + i * 65;
+                        const arcY = roof.y - 145 - i * 18;
+                        this.collectibles.push(new Collectible(
+                            arcX,
+                            arcY,
+                            i === 1 ? 'cookie' : 'gift'
+                        ));
+                    }
+                } else if (roll < 0.80 && usableWidth >= 90 && this.consecutiveObstacleRoofs < 3) {
+                    // Telhados com 1 ou 2 obstáculos bem espaçados para maior desafio de parkour
+                    const canPlaceTwo = usableWidth >= 260 && Math.random() < 0.55;
+                    this.consecutiveObstacleRoofs++;
+
+                    if (canPlaceTwo) {
+                        const obs1 = obsTypes[Math.floor(Math.random() * obsTypes.length)];
+                        const obs2 = obsTypes[Math.floor(Math.random() * obsTypes.length)];
+                        const x1 = roof.x + safeEntryMargin + usableWidth * 0.22;
+                        const x2 = roof.x + safeEntryMargin + usableWidth * 0.72;
+
+                        this.items.push(new RoofItem(x1, roof.y, obs1));
+                        this.items.push(new RoofItem(x2, roof.y, obs2));
+
+                        // Apenas 1 presente/biscoito ocasional entre os obstáculos
+                        if (Math.random() < 0.45) {
+                            this.collectibles.push(new Collectible(
+                                (x1 + x2) / 2 + 18,
+                                roof.y - 26,
+                                Math.random() < 0.5 ? 'cookie' : 'gift'
+                            ));
+                        }
+                    } else {
+                        const chosen = obsTypes[Math.floor(Math.random() * obsTypes.length)];
+                        const obsX = roof.x + safeEntryMargin + (usableWidth - 40) * (0.3 + Math.random() * 0.4);
+                        this.items.push(new RoofItem(obsX, roof.y, chosen));
+
+                        // Apenas 1 coletável pontual acima do obstáculo em metade das vezes
+                        if (Math.random() < 0.5) {
+                            this.collectibles.push(new Collectible(
+                                obsX + 20,
+                                roof.y - 84,
+                                Math.random() < 0.5 ? 'cookie' : 'gift'
+                            ));
+                        }
+                    }
+                } else {
+                    // Telhado livre para respiro com no máximo 1 coletável
+                    this.consecutiveObstacleRoofs = 0;
+                    if (Math.random() < 0.45) {
+                        this.collectibles.push(new Collectible(
+                            roof.x + roof.width * 0.5,
+                            roof.y - 28,
+                            Math.random() < 0.5 ? 'cookie' : 'gift'
+                        ));
+                    }
+                }
+
+                // 3. Presente Especial de Trenó no meio da pista (aparece periodicamente)
+                this.roofsSinceSleighGift++;
+                if (!this.isTurbo && this.roofsSinceSleighGift >= 5 && Math.random() < 0.5) {
+                    this.roofsSinceSleighGift = 0;
+                    const sleighX = roof.x + roof.width * 0.5;
+                    const sleighY = roof.y - 72;
+                    this.collectibles.push(new Collectible(sleighX, sleighY, 'sleigh_gift'));
+                }
+            }
+
+            activateTurbo() {
+                this.isTurbo = true;
+                this.turboTimerSec = PHYSICS.turboDurationSec;
+                this.roofsSinceSleighGift = 0;
+                this.sound.playTurbo();
+                this.spawnParticles(
+                    this.player.x + this.player.width / 2,
+                    this.player.y + this.player.height / 2,
+                    24,
+                    '#fde047',
+                    'star'
+                );
+            }
+
+            /**
+             * Garante que, ao encerrar o Modo Turbo Trenó, o personagem continue no mesmo cenário
+             * sem teleporte, mantendo apenas um telhado abaixo caso esteja sobre um vão vazio
+             */
+            ensureSafeLandingAfterTurbo() {
+                const playerFootY = this.player.y + this.player.height;
+                const safeY = Math.min(this.height - 115, Math.max(240, playerFootY + 28));
+
+                // Verifica se já existe um telhado logo abaixo do personagem
+                const hasRoofBelow = this.platforms.some(r =>
+                    r.x <= this.player.x + this.player.width + 80 &&
+                    r.x + r.width >= this.player.x - 40
+                );
+
+                if (!hasRoofBelow) {
+                    // Cria uma pequena ponte de apoio sem substituir nem mover os telhados existentes
+                    const bridgeRoof = new RoofPlatform(
+                        this.player.x - 40,
+                        safeY,
+                        260,
+                        this.height - safeY,
+                        this.biome === 'NORTH_POLE' ? 'ice' : 'normal',
+                        this.biome
+                    );
+                    this.platforms.push(bridgeRoof);
+                    this.platforms.sort((a, b) => a.x - b.x);
+                }
+
+                // Limpa apenas obstáculos que estejam imediatamente em cima do jogador no instante em que o trenó some
+                this.items = this.items.filter(item =>
+                    item.x + item.width < this.player.x - 20 || item.x > this.player.x + 220
+                );
+            }
+
+            enterBiomeStage(stage) {
+                const idx = BIOME_STAGES.findIndex(s => s.id === stage.id);
+                if (idx !== -1) this.biomeStageIndex = idx;
+                this.biome = stage.id;
+                this.portalFlashAlpha = 1.0;
+                this.bannerTimerSec = 3.5;
+                this.bannerTitleText = `${stage.icon} NOVO MAPA: ${stage.shortName}! ${stage.icon}`;
+                this.bannerSubText = `Você atravessou o portal mágico dos ${stage.minDist}m!`;
+                this.postTurboGraceSec = Math.max(this.postTurboGraceSec, 1.5);
+                this.sound.playPortal();
+
+                // Atualiza o visual dos telhados à frente para o novo tema
+                for (const roof of this.platforms) {
+                    if (roof.x + roof.width > this.player.x - 40) {
+                        roof.biome = stage.id;
+                        if (stage.id === 'NORTH_POLE') {
+                            roof.type = 'ice';
+                            roof.hasIgloo = roof.width >= 430 && Math.random() < 0.45;
+                        } else {
+                            roof.type = 'normal';
+                            roof.hasIgloo = false;
+                        }
+                    }
+                }
+
+                // Remove obstáculos que estavam logo após o portal para entrada limpa
+                this.items = this.items.filter(item => item.x < this.player.x || item.x > this.player.x + 420);
+
+                // Explosão mágica com a cor do novo mapa
+                this.spawnParticles(
+                    this.player.x + this.player.width / 2,
+                    this.player.y + this.player.height / 2,
+                    32,
+                    stage.portalColor || '#38bdf8',
+                    'star'
+                );
+            }
+
+            updateHUD() {
+                this.hudScore.textContent = `${Math.floor(this.distance)} m`;
+
+                const currentStage = BIOME_STAGES[this.biomeStageIndex] || BIOME_STAGES[0];
+                this.hudBiome.textContent = `${currentStage.icon} ${currentStage.name}`;
+                this.hudBiomePill.style.borderColor = currentStage.portalColor || 'rgba(147, 197, 253, 0.35)';
+
+                if (this.isTurbo) {
+                    this.turboBox.classList.add('active');
+                    this.turboTitle.textContent = '🔥 TURBO TRENÓ!';
+                    this.turboCount.textContent = `${Math.max(0, this.turboTimerSec).toFixed(1)}s`;
+                    const pct = Math.max(0, Math.min(100, (this.turboTimerSec / PHYSICS.turboDurationSec) * 100));
+                    this.turboFill.style.width = `${pct}%`;
+                } else {
+                    this.turboBox.classList.remove('active');
+                    this.turboTitle.textContent = '🛷 Turbo Trenó';
+                    this.turboCount.textContent = 'Pegue na pista';
+                    this.turboFill.style.width = '0%';
+                }
+            }
+
+            /**
+             * Renderiza o céu natalino, aurora boreal, lua cheia e montanhas parallax
+             */
+            drawBackground(ctx) {
+                const st = BIOME_STAGES[this.biomeStageIndex] || BIOME_STAGES[0];
+
+                // Gradiente do céu noturno dinâmico conforme o mapa atual
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, this.height);
+                skyGrad.addColorStop(0, st.sky[0]);
+                skyGrad.addColorStop(0.5, st.sky[1]);
+                skyGrad.addColorStop(1, st.sky[2]);
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, this.width, this.height);
+
+                // Estrelas cintilantes
+                for (const s of this.stars) {
+                    const twinkle = 0.45 + 0.55 * Math.sin(this.time * 2.5 + s.phase);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Aurora Boreal ondulante personalizada por cenário
+                ctx.save();
+                const auroraGrad = ctx.createLinearGradient(0, 30, 0, this.height * 0.52);
+                auroraGrad.addColorStop(0, st.aurora[0]);
+                auroraGrad.addColorStop(0.5, st.aurora[1]);
+                auroraGrad.addColorStop(1, st.aurora[2]);
+                ctx.fillStyle = auroraGrad;
+
+                ctx.beginPath();
+                ctx.moveTo(0, this.height * 0.52);
+                for (let x = 0; x <= this.width + 40; x += 40) {
+                    const wave = Math.sin(x * 0.006 + this.time * 0.9) * 32 +
+                        Math.cos(x * 0.012 - this.time * 0.6) * 18;
+                    ctx.lineTo(x, this.height * 0.22 + wave);
+                }
+                ctx.lineTo(this.width, this.height * 0.52);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                // Lua cheia brilhante
+                const moonX = this.width * 0.8;
+                const moonY = Math.max(95, this.height * 0.17);
+                const moonGlow = ctx.createRadialGradient(moonX, moonY, 18, moonX, moonY, 95);
+                moonGlow.addColorStop(0, st.moonGlow);
+                moonGlow.addColorStop(1, 'rgba(254, 249, 195, 0)');
+                ctx.fillStyle = moonGlow;
+                ctx.beginPath();
+                ctx.arc(moonX, moonY, 95, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = st.moon;
+                ctx.beginPath();
+                ctx.arc(moonX, moonY, 34, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Camadas de montanhas/silhuetas parallax temáticas
+                this.drawMountainLayer(ctx, 0.12, st.mtnFar[0], st.mtnFar[1], 0.62, 115, 255);
+                this.drawMountainLayer(ctx, 0.28, st.mtnNear[0], st.mtnNear[1], 0.74, 85, 190);
+            }
+
+            update(dt, dtMs) {
+                this.time += dt / 60;
+                const dtSec = dtMs / 1000;
+
+                // Atualiza neve de fundo continuamente (inclusive no menu)
+                const ambientWind = this.state === 'PLAYING' ? this.speed : 2.2;
+                for (const flake of this.snowflakes) {
+                    flake.update(dt, this.width, this.height, ambientWind);
+                }
+
+                // Atualiza partículas
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    this.particles[i].update(dt);
+                    if (this.particles[i].life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+
+                if (this.state !== 'PLAYING') return;
+
+                // Velocidade progressiva suave + bônus controlado de gelo (somente na Vila) ou turbo
+                const progressiveBase = Math.min(
+                    PHYSICS.maxSpeed,
+                    PHYSICS.baseSpeed + this.distance * PHYSICS.speedRamp
+                );
+                const iceBonus = (this.biome === 'VILLAGE' && this.player.onIce) ? PHYSICS.iceSpeedBonus : 0;
+                const turboBonus = this.isTurbo ? 3.8 : 0;
+                this.speed = progressiveBase + iceBonus + turboBonus;
+
+                // Atualiza efeitos visuais da transição de portal
+                if (this.portalFlashAlpha > 0) {
+                    this.portalFlashAlpha = Math.max(0, this.portalFlashAlpha - dtSec * 1.4);
+                }
+                if (this.bannerTimerSec > 0) {
+                    this.bannerTimerSec = Math.max(0, this.bannerTimerSec - dtSec);
+                }
+
+                // Avança distância percorrida
+                this.distance += (this.speed * dt) * 0.14;
+
+                // Gerencia temporizador do Modo Turbo Trenó e invencibilidade pós-turbo
+                if (this.isTurbo) {
+                    this.turboTimerSec -= dtSec;
+
+                    // Rastro dourado contínuo do trenó
+                    if (Math.random() < 0.65) {
+                        this.particles.push(new Particle(
+                            this.player.x,
+                            this.player.y + this.player.height - 6,
+                            -2.5 - Math.random() * 2,
+                            (Math.random() - 0.5) * 1.5,
+                            3 + Math.random() * 2.5,
+                            '#fde047',
+                            22,
+                            'star'
+                        ));
+                    }
+
+                    if (this.turboTimerSec <= 0) {
+                        this.isTurbo = false;
+                        this.turboTimerSec = 0;
+                        this.postTurboGraceSec = PHYSICS.postTurboGraceSec;
+                        this.ensureSafeLandingAfterTurbo();
+                    }
+                } else if (this.postTurboGraceSec > 0) {
+                    this.postTurboGraceSec = Math.max(0, this.postTurboGraceSec - dtSec);
+                }
+
+                // Atualiza jogador
+                const prevBottom = this.player.y + this.player.height;
+                this.player.update(
+                    dt,
+                    dtMs,
+                    this.isTurbo,
+                    this.sound,
+                    (x, y, c, col, sh) => this.spawnParticles(x, y, c, col, sh)
+                );
+                this.player.grounded = false;
+                this.player.onIce = false;
+
+                // Atualiza telhados e verifica pouso
+                for (let i = this.platforms.length - 1; i >= 0; i--) {
+                    const roof = this.platforms[i];
+                    roof.update(dt, this.speed);
+
+                    const pLeft = this.player.x + 7;
+                    const pRight = this.player.x + this.player.width - 7;
+                    const pBottom = this.player.y + this.player.height;
+
+                    const overlapsX = pRight > roof.x && pLeft < roof.x + roof.width;
+                    const landingTolerance = 14 + Math.max(0, this.player.vy * dt);
+
+                    if (
+                        overlapsX &&
+                        this.player.vy >= 0 &&
+                        prevBottom <= roof.y + landingTolerance &&
+                        pBottom >= roof.y - 2
+                    ) {
+                        this.player.y = roof.y - this.player.height;
+                        this.player.vy = 0;
+                        this.player.grounded = true;
+                        this.player.jumpsUsed = 0;
+                        this.player.onIce = (roof.type === 'ice');
+                    }
+
+                    if (roof.x + roof.width < -150) {
+                        this.platforms.splice(i, 1);
+                    }
+                }
+
+                // Atualiza obstáculos e molas
+                for (let i = this.items.length - 1; i >= 0; i--) {
+                    const item = this.items[i];
+                    item.update(dt, this.speed, this.particles);
+
+                    // Caixa de colisão do jogador ligeiramente reduzida para justiça
+                    const pBox = {
+                        x: this.player.x + 8,
+                        y: this.player.y + 6,
+                        w: this.player.width - 16,
+                        h: this.player.height - 10
+                    };
+
+                    let iBox;
+                    if (item.kind === 'spring') {
+                        // Hitbox ampliada na mola de bengala doce para ativação super fácil
+                        iBox = {
+                            x: item.x - 10,
+                            y: item.y - item.height - 10,
+                            w: item.width + 20,
+                            h: item.height + 14
+                        };
+                    } else {
+                        // Hitbox dos obstáculos reduzida em ~25% em relação ao visual
+                        const trimX = item.width * 0.14;
+                        const trimTop = item.height * 0.24;
+                        iBox = {
+                            x: item.x + trimX,
+                            y: item.y - item.height + trimTop,
+                            w: item.width - trimX * 2,
+                            h: item.height - trimTop
+                        };
+                    }
+
+                    const hit = (
+                        pBox.x < iBox.x + iBox.w &&
+                        pBox.x + pBox.w > iBox.x &&
+                        pBox.y < iBox.y + iBox.h &&
+                        pBox.y + pBox.h > iBox.y
+                    );
+
+                    if (hit) {
+                        if (item.kind === 'spring') {
+                            this.player.vy = PHYSICS.springForce;
+                            this.player.grounded = false;
+                            this.player.coyoteTimerMs = 0;
+                            this.player.jumpsUsed = 1; // Ainda permite 1 pulo duplo extra no ar!
+                            this.player.squashX = 0.72;
+                            this.player.squashY = 1.35;
+                            this.sound.playSpring();
+                            this.spawnParticles(item.x + item.width / 2, item.y - 12, 14, '#fde047', 'star');
+                        } else if (this.isTurbo) {
+                            // No Modo Turbo Trenó, destrói obstáculos e ganha pontos extras!
+                            this.distance += 4;
+                            this.sound.playSmash();
+                            this.spawnParticles(item.x + item.width / 2, item.y - item.height / 2, 16, '#ffffff');
+                            this.items.splice(i, 1);
+                            continue;
+                        } else if (this.postTurboGraceSec <= 0) {
+                            this.triggerGameOver('O Papai Noel bateu em um obstáculo no telhado!');
+                            return;
+                        }
+                    }
+
+                    if (item.x + item.width < -100) {
+                        this.items.splice(i, 1);
+                    }
+                }
+
+                // Atualiza coletáveis (presentes e biscoitos)
+                for (let i = this.collectibles.length - 1; i >= 0; i--) {
+                    const col = this.collectibles[i];
+                    col.update(dt, this.speed, this.player, this.isTurbo);
+
+                    const px = this.player.x + this.player.width / 2;
+                    const py = this.player.y + this.player.height / 2;
+                    const dist = Math.hypot(px - col.x, py - col.y);
+
+                    if (dist < col.radius + 24) {
+                        this.giftsCollected++;
+                        this.distance += 2;
+                        this.sound.playCollect(col.type === 'cookie');
+                        this.spawnParticles(
+                            col.x,
+                            col.y,
+                            10,
+                            col.type === 'cookie' ? '#fbbf24' : '#ef4444',
+                            'star'
+                        );
+
+                        if (col.type === 'sleigh_gift') {
+                            this.activateTurbo();
+                        }
+
+                        this.collectibles.splice(i, 1);
+                        continue;
+                    }
+
+                    if (col.x < -80) {
+                        this.collectibles.splice(i, 1);
+                    }
+                }
+
+                // Atualiza e verifica entrada no Portal para os próximos mapas (2000m a 9000m)
+                if (this.portal) {
+                    this.portal.update(dt, this.speed);
+
+                    // Partículas orbitando o portal
+                    if (Math.random() < 0.55) {
+                        this.particles.push(new Particle(
+                            this.portal.x + Math.random() * this.portal.width,
+                            this.portal.y - Math.random() * this.portal.height,
+                            (Math.random() - 0.5) * 1.8,
+                            -0.8 - Math.random() * 1.2,
+                            3 + Math.random() * 2.5,
+                            Math.random() < 0.5 ? this.portal.targetStage.portalColor : this.portal.targetStage.portalSecondary,
+                            26,
+                            'star'
+                        ));
+                    }
+
+                    const px = this.player.x + this.player.width / 2;
+                    const py = this.player.y + this.player.height / 2;
+                    const portalCx = this.portal.x + this.portal.width / 2;
+                    const portalCy = this.portal.y - this.portal.height / 2;
+
+                    if (!this.portal.triggered && Math.abs(px - portalCx) < 42 && Math.abs(py - portalCy) < 68) {
+                        this.portal.triggered = true;
+                        this.enterBiomeStage(this.portal.targetStage);
+                    }
+
+                    if (this.portal.x + this.portal.width < -120) {
+                        this.portal = null;
+                    }
+                }
+
+                // Verifica queda abaixo da tela: encerra imediatamente sem continuidade
+                if (!this.isTurbo && this.postTurboGraceSec <= 0 && this.player.y > this.height + 20) {
+                    this.triggerGameOver('O Papai Noel caiu dos telhados e a corrida terminou!');
+                    return;
+                }
+
+                this.generateAhead();
+                this.updateHUD();
+            }
+
+            drawMountainLayer(ctx, parallaxFactor, fillColor, capColor, baseRatio, minH, maxH) {
+                const segmentWidth = 220;
+                const scroll = (this.distance * 7 * parallaxFactor) % segmentWidth;
+                const count = Math.ceil(this.width / segmentWidth) + 3;
+                const startIndex = Math.floor((this.distance * 7 * parallaxFactor) / segmentWidth);
+                const baseY = this.height * baseRatio;
+
+                ctx.save();
+                ctx.fillStyle = fillColor;
+                ctx.beginPath();
+                ctx.moveTo(-segmentWidth, this.height);
+
+                const peaks = [];
+                for (let i = -1; i < count; i++) {
+                    const idx = startIndex + i;
+                    const pseudoRand = Math.abs(Math.sin(idx * 12.9898) * 43758.5453) % 1;
+                    const peakH = minH + pseudoRand * (maxH - minH);
+                    const px = i * segmentWidth - scroll + segmentWidth * 0.5;
+                    const py = baseY - peakH;
+                    peaks.push({ x: px, y: py });
+                    ctx.lineTo(px, py);
+                }
+
+                ctx.lineTo(this.width + segmentWidth, this.height);
+                ctx.closePath();
+                ctx.fill();
+
+                // Picos nevados suaves
+                ctx.fillStyle = capColor;
+                for (const p of peaks) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x - 36, p.y + 42);
+                    ctx.lineTo(p.x - 10, p.y + 32);
+                    ctx.lineTo(p.x + 8, p.y + 44);
+                    ctx.lineTo(p.x + 36, p.y + 42);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            draw() {
+                const ctx = this.ctx;
+                ctx.clearRect(0, 0, this.width, this.height);
+
+                // 1. Cenário de fundo
+                this.drawBackground(ctx);
+
+                // 2. Telhados
+                for (const roof of this.platforms) {
+                    roof.draw(ctx);
+                }
+
+                // 3. Obstáculos e molas
+                for (const item of this.items) {
+                    item.draw(ctx, this.time);
+                }
+
+                // 4. Presentes e biscoitos de gengibre
+                for (const col of this.collectibles) {
+                    col.draw(ctx);
+                }
+
+                // 4.5. Portal Mágico para o Polo Norte (aos 2000m)
+                if (this.portal) {
+                    this.portal.draw(ctx, this.time);
+                }
+
+                // 5. Papai Noel (e Trenó Dourado no Turbo)
+                if (this.player) {
+                    this.player.draw(ctx, this.isTurbo, this.postTurboGraceSec > 0, this.time);
+                }
+
+                // 6. Partículas mágicas e fumaça
+                for (const p of this.particles) {
+                    p.draw(ctx);
+                }
+
+                // 7. Flocos de neve em primeiro plano
+                for (const flake of this.snowflakes) {
+                    flake.draw(ctx);
+                }
+
+                // 8. Flash e faixa de boas-vindas ao novo mapa
+                if (this.portalFlashAlpha > 0) {
+                    const st = BIOME_STAGES[this.biomeStageIndex] || BIOME_STAGES[0];
+                    ctx.save();
+                    ctx.globalAlpha = this.portalFlashAlpha * 0.45;
+                    ctx.fillStyle = st.portalColor || '#bae6fd';
+                    ctx.fillRect(0, 0, this.width, this.height);
+                    ctx.restore();
+                }
+
+                if (this.bannerTimerSec > 0) {
+                    const st = BIOME_STAGES[this.biomeStageIndex] || BIOME_STAGES[0];
+                    ctx.save();
+                    const alpha = Math.min(1, this.bannerTimerSec * 1.5);
+                    ctx.globalAlpha = alpha;
+                    const bw = Math.min(390, this.width - 32);
+                    const bx = (this.width - bw) / 2;
+                    const by = 92;
+
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+                    ctx.strokeStyle = st.portalColor || '#38bdf8';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.roundRect(bx, by, bw, 56, 18);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '700 18px Fredoka, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(this.bannerTitleText, this.width / 2, by + 24);
+
+                    ctx.fillStyle = st.portalColor || '#7dd3fc';
+                    ctx.font = '700 12px Nunito, sans-serif';
+                    ctx.fillText(this.bannerSubText, this.width / 2, by + 44);
+                    ctx.restore();
+                }
+            }
+
+            loop(timestamp) {
+                if (!this.lastTimestamp) this.lastTimestamp = timestamp;
+                const rawDtMs = Math.min(50, timestamp - this.lastTimestamp);
+                this.lastTimestamp = timestamp;
+
+                const dt = rawDtMs / (1000 / 60);
+                this.update(dt, rawDtMs);
+                this.draw();
+
+                requestAnimationFrame((ts) => this.loop(ts));
+            }
+
+            bindEvents() {
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                    this.initScenery();
+                });
+
+                const handleJumpAction = (e) => {
+                    if (e && e.target && e.target.closest('button')) return;
+                    if (this.state === 'PLAYING') {
+                        this.player.bufferJump();
+                    }
+                };
+
+                window.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+                        e.preventDefault();
+                        if (this.state === 'PLAYING') {
+                            this.player.bufferJump();
+                        } else if (this.state === 'MENU') {
+                            this.startGame();
+                        }
+                    } else if (e.code === 'Escape' && this.state === 'GAMEOVER') {
+                        this.returnToMenu();
+                    }
+                });
+
+                this.canvas.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    handleJumpAction(e);
+                });
+
+                document.getElementById('start-btn').addEventListener('click', () => {
+                    this.startGame();
+                });
+
+                document.getElementById('restart-btn').addEventListener('click', () => {
+                    this.startGame();
+                });
+
+                document.getElementById('menu-btn').addEventListener('click', () => {
+                    this.returnToMenu();
+                });
+
+                const muteBtn = document.getElementById('mute-btn');
+                const iconOn = document.getElementById('icon-sound-on');
+                const iconOff = document.getElementById('icon-sound-off');
+
+                muteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.sound.init();
+                    const isMuted = this.sound.toggleMute();
+                    iconOn.style.display = isMuted ? 'none' : 'block';
+                    iconOff.style.display = isMuted ? 'block' : 'none';
+                });
+            }
+        }
+
+        window.addEventListener('load', () => {
+            const game = new ChristmasParkourGame();
+            requestAnimationFrame((ts) => game.loop(ts));
+        });
+    </script>
+</body>
+
+</html>
